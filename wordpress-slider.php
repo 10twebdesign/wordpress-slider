@@ -17,6 +17,9 @@ add_action( 'save_post', 'wordpress_slider_meta_box_save');
 add_action( 'admin_head', 'wordpress_slider_featured_image_check');
 add_shortcode ( 'image-slider', 'wordpress_slider_shortcode');
 add_action( 'wp_enqueue_scripts', 'wordpress_slider_encode_scripts');
+add_action( 'admin_menu', 'wordpress_slider_add_admin_menus');
+register_activation_hook(__FILE__, 'wordpress_slider_activation');
+register_uninstall_hook(__FILE__, 'wordpress_slider_uninstall');
 
 function register_slider_post_type() {
 
@@ -71,6 +74,21 @@ function wordpress_slider_featured_image_check() {
     }
 }
 
+function wordpress_slider_activation() {
+    update_option('_wordpress_slider_autoplay', true);
+    update_option('_wordpress_slider_autoplay_speed', 3000);
+}
+function wordpress_slider_uninstall() {
+    global $wpdb;
+
+    delete_option('_wordpress_slider_autoplay');
+    delete_option('_wordpress_slider_autoplay_speed');
+
+    $table_name = $wpdb->prefix . "posts";
+    $sql = "DELETE FROM `$table_name` WHERE `post_type` = 'slider_image'";
+    $wpdb->query($sql);
+}
+
 function wordpress_slider_meta_box() {
     $screens = array('slider_image');
     foreach($screens as $screen) {
@@ -113,23 +131,105 @@ function wordpress_slider_encode_scripts() {
     wp_enqueue_script('jquery_210', 'http://code.jquery.com/jquery-2.1.0.min.js');
     wp_enqueue_script('jquery_migrate', 'http://code.jquery.com/jquery-migrate-1.2.1.min.js');
     wp_enqueue_script('slick_js', plugin_dir_url(__FILE__) . 'slick/slick.min.js');
-//    wp_enqueue_script('slick_start', plugin_dir_url(__FILE__) . 'slick-start.js');
+    wp_enqueue_script('slick_start', plugin_dir_url(__FILE__) . 'slick-start.js');
+}
+
+function wordpress_slider_add_admin_menus() {
+    add_submenu_page('edit.php?post_type=slider_image', 'Options', 'Options', 'manage_options', 'wordpress_slider_options_menu', 'wordpress_slider_options_menu');
+}
+
+function wordpress_slider_options_menu() {
+    ?>
+    <div class="wrap">
+        <h2><?php _e('Slider Options', 'wordpress_slider'); ?></h2>
+        <?php
+        if(isset($_POST['wordpress_slider_options_nonce'])) {
+            wordpress_slider_options_menu_process();
+        }
+        ?>
+        <form id="wordpress_slider_options_form" method="post">
+            <?php wp_nonce_field('wordpress_slider_options', 'wordpress_slider_options_nonce'); ?>
+            <table class="form-table">
+                <tbody>
+                    <tr>
+                        <?php $value = get_option('_wordpress_slider_autoplay', false); ?>
+                        <th scope="row">
+                            <label for="wordpress_slider_autoplay"><?php _e('AutoPlay:', 'wordpress_slider'); ?></label>
+                        </th>
+                        <td>
+                            <input type="checkbox" name="wordpress_slider_autoplay" id="wordpress_slider_autoplay"<?php if($value) { echo ' checked="checked"'; } ?>>
+                            <p class="description"><?php _e('Should the slider automatically advance from image to image?', 'wordpress_slider'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <?php $value = get_option('_wordpress_slider_autoplay_speed', 3000); ?>
+                        <th scope="row">
+                            <label for="wordpress_slider_autoplay_speed"><?php _e('AutoPlay Speed:', 'wordpress_slider'); ?></label>
+                        </th>
+                        <td>
+                            <input type="text" name="wordpress_slider_autoplay_speed" id="wordpress_slider_autoplay_speed"<?php if($value) { echo " value='$value'"; }?>>
+                            <p class="description"><?php _e('Time between slide changes, in milliseconds. (E.G., 3 seconds = 3000)', 'wordpress_slider'); ?></p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="submit"><input id="submit" name="submit" type="submit" class="button button-primary" value="Save Options"></p>
+        </form>
+    </div>
+    <?php
+}
+function wordpress_slider_options_menu_process() {
+    if(!wp_verify_nonce($_POST['wordpress_slider_options_nonce'], 'wordpress_slider_options')) {
+        return;
+    }
+    if(!current_user_can('manage_options')) {
+        return;
+    }
+
+    if($_POST['wordpress_slider_autoplay']) {
+        update_option('_wordpress_slider_autoplay', true);
+    } else {
+        update_option('_wordpress_slider_autoplay', false);
+    }
+    if(is_numeric($_POST['wordpress_slider_autoplay_speed'])) {
+        if($_POST['wordpress_slider_autoplay_speed']) {
+            update_option( '_wordpress_slider_autoplay_speed', sanitize_text_field($_POST['wordpress_slider_autoplay_speed']));
+        } else {
+            update_option('_wordpress_slider_autoplay_speed', 3000);
+        }
+    }
+
+    ?>
+    <div class="updated"><p>Options saved.</p></div>
+    <?php
 }
 
 function wordpress_slider_shortcode() {
+    $settings_list = '';
+    if(get_option('_wordpress_slider_autoplay', true)) {
+        $settings_list .= "'autoplay': true,";
+        if(get_option('_wordpress_slider_autoplay_speed', false)) {
+            $settings_list .= "'autoplaySpeed': " . get_option('_wordpress_slider_autoplay_speed', 3000) . ",";
+        }
+    } else {
+        $settings_list .= "'autoplay': false,";
+    }
+
+    $ret = "<script type='text/javascript'>";
+    $ret .= "$(document).ready(function(){";
+    $ret .= "$('.slides_container').slick({";
+    $ret .= $settings_list;
+    $ret .= "});";
+    $ret .= "});";
+    $ret .= "</script>";
+
     $args = array (
         'post_type' => 'slider_image',
         'posts_per_page' => -1
     );
     $query = new WP_Query($args);
-    $ret = "<script type='text/javascript'>
 
-$(document).ready(function(){
-    $('.slides_container').slick({
-        'autoplay': true,
-});
-});
-</script>";
+
     if($query->have_posts()) {
         $ret .= '';
         $ret .= '<div class="slides_container">';
