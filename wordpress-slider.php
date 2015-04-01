@@ -77,12 +77,16 @@ function wordpress_slider_featured_image_check() {
 function wordpress_slider_activation() {
     update_option('_wordpress_slider_autoplay', true);
     update_option('_wordpress_slider_autoplay_speed', 3000);
+    update_option('_wordpress_slider_dots', false);
+    update_option('_wordpress_slider_animation', 1);
 }
 function wordpress_slider_uninstall() {
     global $wpdb;
 
     delete_option('_wordpress_slider_autoplay');
     delete_option('_wordpress_slider_autoplay_speed');
+    delete_option('_wordpress_slider_dots');
+    delete_option('_wordpress_slider_animation');
 
     $table_name = $wpdb->prefix . "posts";
     $sql = "DELETE FROM `$table_name` WHERE `post_type` = 'slider_image'";
@@ -128,10 +132,10 @@ function wordpress_slider_meta_box_save($post) {
 
 function wordpress_slider_encode_scripts() {
     wp_enqueue_style('slick_css', plugin_dir_url(__FILE__) . 'slick/slick.css');
+    wp_enqueue_style('wordpress_slider_css', plugin_dir_url(__FILE__) . 'style.css');
     wp_enqueue_script('jquery_210', 'http://code.jquery.com/jquery-2.1.0.min.js');
     wp_enqueue_script('jquery_migrate', 'http://code.jquery.com/jquery-migrate-1.2.1.min.js');
     wp_enqueue_script('slick_js', plugin_dir_url(__FILE__) . 'slick/slick.min.js');
-    wp_enqueue_script('slick_start', plugin_dir_url(__FILE__) . 'slick-start.js');
 }
 
 function wordpress_slider_add_admin_menus() {
@@ -171,6 +175,26 @@ function wordpress_slider_options_menu() {
                             <p class="description"><?php _e('Time between slide changes, in milliseconds. (E.G., 3 seconds = 3000)', 'wordpress_slider'); ?></p>
                         </td>
                     </tr>
+                    <tr>
+                        <?php $value = get_option('_wordpress_slider_dots', false); ?>
+                        <th scope="row">
+                            <label for="wordpress_slider_dots"><?php _e('Navigation Dots:', 'wordpress_slider'); ?></label>
+                        </th>
+                        <td>
+                            <input type="checkbox" name="wordpress_slider_dots" id="wordpress_slider_dots"<?php if($value) { echo ' checked="checked"'; } ?>>
+                            <p class="description"><?php _e('Should we display navigation "dots" below the slides?', 'wordpress_slider'); ?></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <?php $value = get_option('_wordpress_slider_animation', false) ?>
+                        <th scope="row"><label for="wordpress_slider_animation"><?php _e('Animation:', 'wordpress-slider'); ?></label></th>
+                        <td>
+                            <select name="wordpress_slider_animation" id="wordpress_slider_animation">
+                                <option value="1"<?php if(!$value || $value == 1) { echo ' selected="selected"'; } ?>><?php _e('Slide', 'wordpress-slider'); ?></option>
+                                <option value="2"<?php if($value == 2) { echo ' selected="selected"'; } ?>><?php _e('Fade', 'wordpress-slider'); ?></option>
+                            </select>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
             <p class="submit"><input id="submit" name="submit" type="submit" class="button button-primary" value="Save Options"></p>
@@ -198,6 +222,20 @@ function wordpress_slider_options_menu_process() {
             update_option('_wordpress_slider_autoplay_speed', 3000);
         }
     }
+    if($_POST['wordpress_slider_dots']) {
+        update_option('_wordpress_slider_dots', true);
+    } else {
+        update_option('_wordpress_slider_dots', false);
+    }
+    switch($_POST['wordpress_slider_animation']) {
+        case 1:
+        default:
+            update_option('_wordpress_slider_animation', 1);
+            break;
+        case 2:
+            update_option('_wordpress_slider_animation', 2);
+            break;
+    }
 
     ?>
     <div class="updated"><p>Options saved.</p></div>
@@ -213,6 +251,17 @@ function wordpress_slider_shortcode() {
         }
     } else {
         $settings_list .= "'autoplay': false,";
+    }
+    if(get_option('_wordpress_slider_dots', false)) {
+        $settings_list .= "'dots': true,";
+    }
+    switch(get_option('_wordpress_slider_animation', 1)) {
+        case 1:
+        default:
+            break;
+        case 2:
+            $settings_list .= "'fade': true,";
+            break;
     }
 
     $ret = "<script type='text/javascript'>";
@@ -241,13 +290,13 @@ function wordpress_slider_shortcode() {
                 $ret .= "<a href='$url'>";
             }
             $ret .= get_the_post_thumbnail(get_the_ID(), 'full');
-            if($url) {
-                $ret .= "</a>";
-            }
-            $ret .= '<div class="caption">';
+            $ret .= '<div class="slider-caption">';
             $ret .= '<h5>' . get_the_title() . '</h5>';
             $ret .= get_the_content();
             $ret .= '</div>';
+            if($url) {
+                $ret .= "</a>";
+            }
             $ret .= '</div>';
         }
         $ret .= '</div>';

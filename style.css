@@ -1,0 +1,36 @@
+.slider-caption {
+    background:#dddddd;
+    color:#333333;
+    padding:4px;
+}
+
+.slider-caption h5 {
+    margin:0 !important;
+    padding:0 !important;
+    color:#000000;
+}
+
+.slick-prev {
+    float:left;
+    width:50%;
+}
+.slick-next {
+    float:right;
+    width:50%;
+}
+.slick-dots:before {
+    content:'';
+    display:block;
+    clear: both;
+}
+.slick-dots:after {
+    content:'';
+    display:block;
+    clear: both;
+}
+.slick-dots ul {
+}
+.slick-dots li {
+    float:left;
+    list-style-type: none !important;
+}
