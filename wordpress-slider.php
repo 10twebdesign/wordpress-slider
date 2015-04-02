@@ -4,7 +4,7 @@
 Plugin Name: WordPress Slider
 Plugin URI: http://www.10twebdesign.com/
 Description: Image Slider for WordPress designed to be easy to maintain.
-Version: 0.1a
+Version: 0.2
 Author: 10T Web Design
 Author URI: http://www.10twebdesign.com/
 GitHub Plugin URI: https://github.com/10twebdesign/wordpress-slider
@@ -79,6 +79,8 @@ function wordpress_slider_activation() {
     update_option('_wordpress_slider_autoplay_speed', 3000);
     update_option('_wordpress_slider_dots', false);
     update_option('_wordpress_slider_animation', 1);
+    update_option('_wordpress_slider_draggable', true);
+    update_option('_wordpress_slider_arrows', false);
 }
 function wordpress_slider_uninstall() {
     global $wpdb;
@@ -87,6 +89,8 @@ function wordpress_slider_uninstall() {
     delete_option('_wordpress_slider_autoplay_speed');
     delete_option('_wordpress_slider_dots');
     delete_option('_wordpress_slider_animation');
+    delete_option('_wordpress_slider_draggable');
+    delete_option('_wordpress_slider_arrows');
 
     $table_name = $wpdb->prefix . "posts";
     $sql = "DELETE FROM `$table_name` WHERE `post_type` = 'slider_image'";
@@ -176,6 +180,14 @@ function wordpress_slider_options_menu() {
                         </td>
                     </tr>
                     <tr>
+                        <?php $value = get_option('_wordpress_slider_arrows', false); ?>
+                        <th scope="row"><label for="wordpress_slider_arrows"><?php _e('Previous/Next Buttons', 'wordpress_slider'); ?></label></th>
+                        <td>
+                            <input type="checkbox" name="wordpress_slider_arrows" id="wordpress_slider_arrors"<?php if($value) { echo ' checked="checked"'; } ?>>
+                            <p class="description">Display previous and next buttons under slideshow?</p>
+                        </td>
+                    </tr>
+                    <tr>
                         <?php $value = get_option('_wordpress_slider_dots', false); ?>
                         <th scope="row">
                             <label for="wordpress_slider_dots"><?php _e('Navigation Dots:', 'wordpress_slider'); ?></label>
@@ -186,13 +198,21 @@ function wordpress_slider_options_menu() {
                         </td>
                     </tr>
                     <tr>
-                        <?php $value = get_option('_wordpress_slider_animation', false) ?>
+                        <?php $value = get_option('_wordpress_slider_animation', false); ?>
                         <th scope="row"><label for="wordpress_slider_animation"><?php _e('Animation:', 'wordpress-slider'); ?></label></th>
                         <td>
                             <select name="wordpress_slider_animation" id="wordpress_slider_animation">
                                 <option value="1"<?php if(!$value || $value == 1) { echo ' selected="selected"'; } ?>><?php _e('Slide', 'wordpress-slider'); ?></option>
                                 <option value="2"<?php if($value == 2) { echo ' selected="selected"'; } ?>><?php _e('Fade', 'wordpress-slider'); ?></option>
                             </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <?php $value = get_option('_wordpress_slider_draggable', true); ?>
+                        <th scope="row"><label for="wordpress_slider_draggable"><?php _e('Draggable:', 'wordpress-slider'); ?></label></th>
+                        <td>
+                            <input type="checkbox" name="wordpress_slider_draggable" id="wordpress_slider_draggable"<?php if($value) { echo ' checked="checked"'; }?>>
+                            <p class="description"><?php _e('Enable click-and-drag, or touch-and-drag, slider navigation.', 'wordpress-slider'); ?></p>
                         </td>
                     </tr>
                 </tbody>
@@ -222,6 +242,11 @@ function wordpress_slider_options_menu_process() {
             update_option('_wordpress_slider_autoplay_speed', 3000);
         }
     }
+    if($_POST['wordpress_slider_arrows']) {
+        update_option('_wordpress_slider_arrows', true);
+    } else {
+        update_option('_wordpress_slider_arrows', false);
+    }
     if($_POST['wordpress_slider_dots']) {
         update_option('_wordpress_slider_dots', true);
     } else {
@@ -235,6 +260,11 @@ function wordpress_slider_options_menu_process() {
         case 2:
             update_option('_wordpress_slider_animation', 2);
             break;
+    }
+    if($_POST['wordpress_slider_draggable']) {
+        update_option('_wordpress_slider_draggable', true);
+    } else {
+        update_option('_wordpress_slider_draggable', false);
     }
 
     ?>
@@ -252,6 +282,11 @@ function wordpress_slider_shortcode() {
     } else {
         $settings_list .= "'autoplay': false,";
     }
+    if(get_option('_wordpress_slider_arrows', false)) {
+        $settings_list .= "'arrows': true,";
+    } else {
+        $settings_list .= "'arrows': false,";
+    }
     if(get_option('_wordpress_slider_dots', false)) {
         $settings_list .= "'dots': true,";
     }
@@ -262,6 +297,11 @@ function wordpress_slider_shortcode() {
         case 2:
             $settings_list .= "'fade': true,";
             break;
+    }
+    if(get_option('_wordpress_slider_draggable', true)) {
+        $settings_list .= "'draggable': true,";
+    } else {
+        $settings_list .= "'draggable': false,";
     }
 
     $ret = "<script type='text/javascript'>";
